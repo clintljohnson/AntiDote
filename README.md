@@ -4,6 +4,8 @@ A Dr. Mario–style falling-capsule puzzle game in a single HTML file. You drop 
 
 Everything is drawn live in the browser: glossy lit capsules, animated viruses that follow the falling pill with their eyes, particles, screen shake and sound effects made in code. There are no images, audio files, build steps or dependencies.
 
+![Antidote gameplay](antidote.png)
+
 ## Getting started
 
 1. Download `antidote.html`.
