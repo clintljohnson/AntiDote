@@ -276,6 +276,27 @@ h1 span {
   filter: drop-shadow(0 4px 14px rgba(255, 190, 40, 0.35));
 }
 #ovMsg { margin: -6px 0 0; font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.12em; color: var(--text); }
+/* Difficulty: a quiet segmented pill above the level stepper */
+#overlay { container-type: inline-size; }
+.mode-select {
+  display: flex; gap: 2px; padding: 3px;
+  border-radius: 999px; border: 1px solid var(--line-2);
+  background: rgba(3, 14, 19, 0.55);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.mode-select button {
+  font: 600 12px/1 var(--f-body); color: var(--muted);
+  padding: 7px 11px; border-radius: 999px; border: 1px solid transparent;
+  background: none; cursor: pointer; white-space: nowrap;
+  transition: color 0.12s, background-color 0.12s, border-color 0.12s;
+}
+.mode-select button:hover { color: var(--text); }
+.mode-select button[aria-pressed="true"] {
+  color: #eafcff; border-color: rgba(95, 227, 255, 0.45);
+  background: linear-gradient(180deg, rgba(95, 227, 255, 0.22), rgba(95, 227, 255, 0.08));
+  box-shadow: 0 0 14px -4px rgba(95, 227, 255, 0.55);
+}
+@container (max-width: 270px) { .mode-select button { padding-inline: 7px; font-size: 11px; } }
 .level-select { display: flex; align-items: center; gap: 16px; }
 .round-btn {
   width: 40px; height: 40px; border-radius: 50%;
@@ -291,6 +312,7 @@ h1 span {
 #levelDisplay { font-family: var(--f-display); font-weight: 900; font-size: 36px; line-height: 1; color: var(--yellow); text-shadow: 0 0 18px rgba(255, 210, 63, 0.4); font-variant-numeric: tabular-nums; }
 .level-read .lbl { margin-top: 6px; }
 .ov-info { margin: 0; font-size: 13px; color: var(--muted); }
+.ov-info b, .ov-info span { color: inherit; white-space: nowrap; }
 .ov-info b { color: var(--text); font-weight: 600; }
 .start {
   font-family: var(--f-display); font-weight: 800; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
@@ -378,7 +400,8 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 .hs-who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .hs-name { font-weight: 600; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hs-date { font-family: var(--f-mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
-.hs-lvl { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); }
+.hs-lvl { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.hs-mode { font-size: 8.5px; letter-spacing: 0.16em; color: var(--dim); }
 .hs-score { font-family: var(--f-display); font-weight: 800; font-size: 13px; color: #eef7f9; }
 .hs-row.fresh { border-color: rgba(255, 210, 63, 0.55); background: rgba(255, 210, 63, 0.08); box-shadow: 0 0 18px -6px rgba(255, 210, 63, 0.6); }
 .hs-empty { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
@@ -498,6 +521,11 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
         <h2 id="ovTitle">Ready?</h2>
         <p id="ovMsg" hidden></p>
         <p id="ovRank" hidden></p>
+        <div class="mode-select" id="modeSelect" role="group" aria-label="Difficulty">
+          <button data-mode="assistant" title="Lab Assistant: fewer viruses, gentle speed">Assistant</button>
+          <button data-mode="technician" title="Lab Technician: a steady, even climb">Technician</button>
+          <button data-mode="chief" title="Chief Virologist: crowded bottles, fast drops">Virologist</button>
+        </div>
         <div class="level-select">
           <button class="round-btn" id="levelDown" aria-label="Lower level">‹</button>
           <div class="level-read"><div id="levelDisplay">0</div><div class="lbl">Level</div></div>
@@ -563,6 +591,33 @@ let CELL = 40, WALL = 22, DPR = 1, BW = 0, BH = 0, NW = 0, NH = 0;
 let bgLayer = null, glassLayer = null;
 const sprites = new Map();
 
+/* ---------- difficulty modes ----------
+   Chief Virologist is the original tuning. The two easier modes grow the
+   virus area every level (no density zig-zag) and ease the speed curve. */
+const MODES = {
+  assistant: {
+    name: 'Lab Assistant', tag: 'ASST',
+    count: l => 4 + 2 * l,
+    rows:  l => Math.min(4 + Math.floor(l * 2 / 3), 12),
+    speed: l => Math.max(250, Math.round(1000 * Math.pow(0.94, l)))
+  },
+  technician: {
+    name: 'Lab Technician', tag: 'TECH',
+    count: l => 4 + 3 * l,
+    rows:  l => Math.min(4 + Math.floor(l * 2 / 3), 12),
+    speed: l => Math.max(150, Math.round(1000 * Math.pow(0.9, l)))
+  },
+  chief: {
+    name: 'Chief Virologist', tag: 'CHIEF',
+    count: l => Math.min(4 + l * 4, 84),
+    rows:  l => Math.min(4 + Math.floor(l / 2), 12),
+    speed: l => [1000, 850, 700, 580, 450, 350, 250, 180, 130, 100][Math.min(l, 9)]
+  }
+};
+const MODE_KEY = 'antidote-mode';
+let mode = 'technician';
+try { const m = localStorage.getItem(MODE_KEY); if (MODES[m]) mode = m; } catch (e) {}
+
 /* ---------- game state ---------- */
 let grid, capsule = null, nextCapsule = null;
 let score = 0, level = 0, gameRunning = false, paused = false, processing = false;
@@ -600,7 +655,7 @@ function rankOf(s) { return board.filter(b => b.score > s).length + 1; }
 
 async function recordRun() {
   if (score <= 0) return;
-  const entry = { score, level, start: startLevel, chain: maxChain, at: new Date().toISOString() };
+  const entry = { score, level, start: startLevel, chain: maxChain, mode, at: new Date().toISOString() };
   if (hsDb) {
     if (canWrite === false) return;
     if (myId) entry.uid = myId;
@@ -654,7 +709,13 @@ async function renderBoard() {
       try { dt.textContent = new Date(b.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) {}
       who.appendChild(dt);
     }
-    const lv = document.createElement('span'); lv.className = 'hs-lvl'; lv.textContent = b.level == null ? '' : 'LV ' + b.level;
+    // scores from before modes existed were played at the original (Chief) tuning
+    const lv = document.createElement('span'); lv.className = 'hs-lvl';
+    if (b.level != null) {
+      const md = MODES[b.mode] || MODES.chief;
+      const mt = document.createElement('span'); mt.className = 'hs-mode'; mt.textContent = md.tag; mt.title = md.name;
+      lv.append(mt, 'LV ' + b.level);
+    }
     const sc = document.createElement('span'); sc.className = 'hs-score'; sc.textContent = Number(b.score).toLocaleString();
     li.append(rank, who, lv, sc);
     list.appendChild(li);
@@ -686,8 +747,8 @@ async function initStore() {
 function initGrid() { grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null)); }
 
 function placeViruses(lvl) {
-  const count = Math.min(4 + lvl * 4, 84);
-  const virusRows = Math.min(4 + Math.floor(lvl / 2), 12);
+  const count = MODES[mode].count(lvl);
+  const virusRows = MODES[mode].rows(lvl);
   let placed = 0, attempts = 0;
   viruses = { red: 0, blue: 0, yellow: 0 };
   while (placed < count && attempts < 10000) {
@@ -840,9 +901,8 @@ async function resolveMatches(run) {
 }
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
-const SPEEDS = [1000, 850, 700, 580, 450, 350, 250, 180, 130, 100];
-function dropSpeed() { return SPEEDS[Math.min(level, SPEEDS.length - 1)]; }
-function speedLabelFor(l) { return l <= 2 ? 'LOW' : l <= 5 ? 'MED' : 'HIGH'; }
+function dropSpeed() { return MODES[mode].speed(level); }
+function speedLabelFor(l) { const ms = MODES[mode].speed(l); return ms >= 650 ? 'LOW' : ms >= 300 ? 'MED' : 'HIGH'; }
 
 function spawnCapsule() {
   capsule = nextCapsule || newCapsule();
@@ -977,8 +1037,9 @@ function showOverlay(mode) {
 
 function updateOverlayInfo() {
   $('levelDisplay').textContent = startLevel;
-  const count = Math.min(4 + startLevel * 4, 84);
-  $('ovInfo').innerHTML = '<b>' + count + ' viruses</b> · ' + speedLabelFor(startLevel).toLowerCase() + ' speed';
+  const count = MODES[mode].count(startLevel);
+  $('ovInfo').innerHTML = '<b>' + MODES[mode].name + '</b> · <span>' + count + ' viruses</span> · <span>' + speedLabelFor(startLevel).toLowerCase() + ' speed</span>';
+  document.querySelectorAll('#modeSelect button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
 }
 
 /* ================= SOUND =================
@@ -1375,6 +1436,14 @@ $('levelUp').addEventListener('click', () => {
   startLevel = levelSelectVal;
   Sfx.play('tick');
   if (!gameRunning) { previewLevel(); updateOverlayInfo(); }
+});
+$('modeSelect').addEventListener('click', e => {
+  const b = e.target.closest('button[data-mode]');
+  if (!b || gameRunning || b.dataset.mode === mode) return;
+  mode = b.dataset.mode;
+  try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
+  Sfx.play('tick');
+  previewLevel(); updateOverlayInfo();
 });
 $('startBtn').addEventListener('click', startGame);
 
