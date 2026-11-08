@@ -52,6 +52,38 @@ body::after {
   pointer-events: none;
   z-index: 0;
 }
+/* Ambient backdrop: faint cells drifting under the "microscope". */
+.drift {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.drift span {
+  position: absolute;
+  left: var(--x); top: var(--y);
+  width: var(--s); height: var(--s);
+  margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%,
+    transparent 52%, rgb(var(--c) / 0.05) 62%, rgb(var(--c) / 0.11) 68%, transparent 71%);
+  filter: blur(1.5px);
+  opacity: 0;
+  animation: drift var(--d) ease-in-out var(--delay) infinite alternate,
+             driftIn 4s ease-out var(--delay-in, 0.5s) forwards;
+  will-change: transform;
+}
+@keyframes drift {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
+  33%  { transform: translate(var(--dx), calc(var(--dy) * -0.6)) rotate(40deg) scale(1.06); }
+  66%  { transform: translate(calc(var(--dx) * -0.4), var(--dy)) rotate(-25deg) scale(0.95); }
+  100% { transform: translate(calc(var(--dx) * 0.7), calc(var(--dy) * 0.3)) rotate(15deg) scale(1.03); }
+}
+@keyframes driftIn { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .drift span { animation: driftIn 0s forwards; }
+}
 .app {
   position: relative;
   z-index: 1;
@@ -401,6 +433,15 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 </style>
 </head>
 <body>
+
+<div class="drift" aria-hidden="true">
+  <span style="--c:238 51 70;  --x:12%; --y:22%; --s:260px; --d:64s; --delay:-8s;  --dx:70px;  --dy:50px"></span>
+  <span style="--c:43 120 240; --x:86%; --y:18%; --s:340px; --d:80s; --delay:-30s; --dx:-60px; --dy:80px"></span>
+  <span style="--c:255 190 37; --x:78%; --y:82%; --s:220px; --d:58s; --delay:-20s; --dx:-80px; --dy:-40px"></span>
+  <span style="--c:95 227 255; --x:22%; --y:78%; --s:300px; --d:72s; --delay:-45s; --dx:60px;  --dy:-70px"></span>
+  <span style="--c:43 120 240; --x:46%; --y:52%; --s:140px; --d:50s; --delay:-12s; --dx:-90px; --dy:60px"></span>
+  <span style="--c:238 51 70;  --x:62%; --y:8%;  --s:120px; --d:46s; --delay:-5s;  --dx:50px;  --dy:70px"></span>
+</div>
 
 <div class="app">
   <header class="top">
